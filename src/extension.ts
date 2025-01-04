@@ -98,7 +98,6 @@ async function checkAndCopyPlopFiles(extensionPath: string, workspaceRoot: strin
   const extensionGeneratorsDir = path.join(extensionResourcesDir, "plop_generators");
   const extensionTemplatesDir = path.join(extensionResourcesDir, "templates");
 
-  // Проверка и настройка Biome
   await checkAndSetupBiome(workspaceRoot, extensionPath);
 
   const isPlopInstalled = await checkPlopInstalled(workspaceRoot);
@@ -159,7 +158,6 @@ async function checkAndSetupBiome(workspaceRoot: string, extensionPath: string):
   const isBiomeInstalled = await isBiomePackageInstalled(workspaceRoot);
   const isBiomeJsonExists = fs.existsSync(biomeJsonPath);
 
-  // Если Biome не установлен и файл отсутствует
   if (!isBiomeInstalled && !isBiomeJsonExists) {
     const installBiomeAndAddConfig = await vscode.window.showInformationMessage(
       "Biome is not installed and biome.json is missing. Do you want to install Biome and add the configuration file?",
@@ -172,9 +170,7 @@ async function checkAndSetupBiome(workspaceRoot: string, extensionPath: string):
       await copyFile(extensionBiomeJsonPath, biomeJsonPath);
       vscode.window.showInformationMessage("Biome installed and biome.json added successfully.");
     }
-  }
-  // Если Biome установлен, но файл отсутствует
-  else if (isBiomeInstalled && !isBiomeJsonExists) {
+  } else if (isBiomeInstalled && !isBiomeJsonExists) {
     const addBiomeConfig = await vscode.window.showInformationMessage(
       "biome.json is missing. Do you want to add the configuration file?",
       "Yes",
@@ -185,9 +181,7 @@ async function checkAndSetupBiome(workspaceRoot: string, extensionPath: string):
       await copyFile(extensionBiomeJsonPath, biomeJsonPath);
       vscode.window.showInformationMessage("biome.json added successfully.");
     }
-  }
-  // Если Biome не установлен, но файл существует
-  else if (!isBiomeInstalled && isBiomeJsonExists) {
+  } else if (!isBiomeInstalled && isBiomeJsonExists) {
     const installBiomeOption = await vscode.window.showInformationMessage(
       "Biome is not installed. Do you want to install it?",
       "Yes",
