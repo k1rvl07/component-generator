@@ -5,6 +5,18 @@ import { fileURLToPath } from "node:url";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 export default function (plop) {
+  plop.setHelper('if_eq', function (a, b, opts) {
+    if (a === b) {
+      return opts.fn(this);
+    } else {
+      return opts.inverse(this);
+    }
+  });
+
+  plop.setHelper('toLowerCase', function (str) {
+    return str.toLowerCase();
+  });
+
   plop.setGenerator("component", {
     description: "Create a new React component",
     prompts: [],
@@ -12,31 +24,32 @@ export default function (plop) {
       const plopData = process.env.PLOP_DATA ? JSON.parse(process.env.PLOP_DATA) : {};
       const mergedData = { ...data, ...plopData };
 
-      const { directory, name, componentType, language, style, stories, test, context, hooks } =
+      const { directory, name, componentType, language, style, stories, test, context, hooks, folderStructure } =
         mergedData;
 
       if (!name || !directory) {
         throw new Error("Name and directory are required!");
       }
 
-      const fileExtension = language === "ts" ? "tsx" : "jsx";
-      const indexExtension = language === "ts" ? "ts" : "js";
+      const fileExtension = language === "TypeScript" ? "tsx" : "jsx";
+      const indexExtension = language === "TypeScript" ? "ts" : "js";
 
       console.log("Generating component with data:", mergedData);
 
       const templatesDir = path.join(__dirname, "../templates");
 
       const componentTemplate =
-        componentType === "class"
+        componentType === "Class Component"
           ? path.join(templatesDir, "class.hbs")
           : path.join(templatesDir, "fc.hbs");
 
       const indexTemplate = path.join(templatesDir, "index.hbs");
       const styleTemplate = path.join(templatesDir, "style.hbs");
+      const styledTemplate = path.join(templatesDir, "styled.hbs");
       const storiesTemplate = path.join(templatesDir, "stories.hbs");
       const testTemplate = path.join(
         templatesDir,
-        `test.${test === "cypress" ? "cypress" : "jest"}.hbs`,
+        `test.${test === "Cypress" ? "cypress" : "jest"}.hbs`,
       );
       const contextTemplate = path.join(templatesDir, "context.hbs");
       const hooksTemplate = path.join(templatesDir, "useCustomHook.hbs");
@@ -49,6 +62,7 @@ export default function (plop) {
         testTemplate,
         contextTemplate,
         hooksTemplate,
+        styledTemplate
       ];
 
       for (const template of templates) {
@@ -61,74 +75,152 @@ export default function (plop) {
         name,
         style,
         language,
+        folderStructure,
+        hooks
       };
 
       const actions = [];
 
-      actions.push({
-        type: "add",
-        path: `${directory}/${name}/${name}.${fileExtension}`,
-        templateFile: componentTemplate,
-        data: templateData,
-      });
+      const componentBasePath = `${directory}/${name}`;
 
-      actions.push({
-        type: "add",
-        path: `${directory}/${name}/index.${indexExtension}`,
-        templateFile: indexTemplate,
-        data: templateData,
-      });
+      if (folderStructure === "Grouped") {
+        actions.push({
+          type: "add",
+          path: `${componentBasePath}/index.${indexExtension}`,
+          templateFile: indexTemplate,
+          data: templateData,
+        });
 
-      if (style && style === "Yes") {
-        let styleExtension = "css";
-        if (style === "scss") {
-          styleExtension = "scss";
-        } else if (style === "styled components") {
-          styleExtension = "js";
+        actions.push({
+          type: "add",
+          path: `${componentBasePath}/${name}.${fileExtension}`,
+          templateFile: componentTemplate,
+          data: templateData,
+        });
+
+        if (style && style !== "No") {
+          if (style === "Styled Components") {
+            actions.push({
+              type: "add",
+              path: `${componentBasePath}/styles/${name}.styled.${fileExtension}`,
+              templateFile: path.join(templatesDir, "styled.hbs"),
+              data: templateData,
+            });
+          } else {
+            const styleExtension = style === "SCSS" ? "scss" : "css";
+            actions.push({
+              type: "add",
+              path: `${componentBasePath}/styles/${name}.module.${styleExtension}`,
+              templateFile: styleTemplate,
+              data: templateData,
+            });
+          }
         }
 
-        actions.push({
-          type: "add",
-          path: `${directory}/${name}/${name}.module.${styleExtension}`,
-          templateFile: styleTemplate,
-          data: templateData,
-        });
-      }
+        if (stories) {
+          actions.push({
+            type: "add",
+            path: `${componentBasePath}/stories/${name}.stories.${fileExtension}`,
+            templateFile: storiesTemplate,
+            data: templateData,
+          });
+        }
 
-      if (stories && stories === "Yes") {
-        actions.push({
-          type: "add",
-          path: `${directory}/${name}/${name}.stories.${fileExtension}`,
-          templateFile: storiesTemplate,
-          data: templateData,
-        });
-      }
+        if (test && test !== "No") {
+          actions.push({
+            type: "add",
+            path: `${componentBasePath}/tests/${name}.test.${fileExtension}`,
+            templateFile: testTemplate,
+            data: templateData,
+          });
+        }
 
-      if (test && test === "Yes") {
-        actions.push({
-          type: "add",
-          path: `${directory}/${name}/${name}.test.${fileExtension}`,
-          templateFile: testTemplate,
-          data: templateData,
-        });
-      }
+        if (context) {
+          actions.push({
+            type: "add",
+            path: `${componentBasePath}/context/${name}Context.${fileExtension}`,
+            templateFile: contextTemplate,
+            data: templateData,
+          });
+        }
 
-      if (context && context === "Yes") {
+        if (hooks) {
+          actions.push({
+            type: "add",
+            path: `${componentBasePath}/hooks/use${name}.${fileExtension}`,
+            templateFile: hooksTemplate,
+            data: templateData,
+          });
+        }
+      } else {
         actions.push({
           type: "add",
-          path: `${directory}/${name}/${name}Context.${fileExtension}`,
-          templateFile: contextTemplate,
+          path: `${componentBasePath}/index.${indexExtension}`,
+          templateFile: indexTemplate,
           data: templateData,
         });
-      }
 
-      if (hooks && hooks === "Yes") {
         actions.push({
           type: "add",
-          path: `${directory}/${name}/use${name}.${fileExtension}`,
-          templateFile: hooksTemplate,
+          path: `${componentBasePath}/${name}.${fileExtension}`,
+          templateFile: componentTemplate,
           data: templateData,
         });
+
+        if (style && style !== "No") {
+          if (style === "Styled Components") {
+            actions.push({
+              type: "add",
+              path: `${componentBasePath}/${name}.styled.${fileExtension}`,
+              templateFile: styledTemplate,
+              data: templateData,
+            });
+          } else {
+            const styleExtension = style === "SCSS" ? "scss" : "css";
+            actions.push({
+              type: "add",
+              path: `${componentBasePath}/${name}.module.${styleExtension}`,
+              templateFile: styleTemplate,
+              data: templateData,
+            });
+          }
+        }
+
+        if (stories) {
+          actions.push({
+            type: "add",
+            path: `${componentBasePath}/${name}.stories.${fileExtension}`,
+            templateFile: storiesTemplate,
+            data: templateData,
+          });
+        }
+
+        if (test && test !== "No") {
+          actions.push({
+            type: "add",
+            path: `${componentBasePath}/${name}.test.${fileExtension}`,
+            templateFile: testTemplate,
+            data: templateData,
+          });
+        }
+
+        if (context) {
+          actions.push({
+            type: "add",
+            path: `${componentBasePath}/${name}Context.${fileExtension}`,
+            templateFile: contextTemplate,
+            data: templateData,
+          });
+        }
+
+        if (hooks) {
+          actions.push({
+            type: "add",
+            path: `${componentBasePath}/use${name}.${fileExtension}`,
+            templateFile: hooksTemplate,
+            data: templateData,
+          });
+        }
       }
 
       return actions;

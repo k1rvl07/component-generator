@@ -1,5 +1,9 @@
 import React from 'react';
+{{#if_eq folderStructure "Grouped"}}
+import { {{name}} } from '../{{name}}';
+{{else}}
 import { {{name}} } from './{{name}}';
+{{/if_eq}}
 
 export default {
   title: 'Components/{{name}}',

@@ -1,6 +1,10 @@
 import React from 'react';
 import { mount } from 'cypress/react';
+{{#if_eq folderStructure "Grouped"}}
+import { {{name}} } from '../{{name}}';
+{{else}}
 import { {{name}} } from './{{name}}';
+{{/if_eq}}
 
 describe('{{name}}', () => {
     it('should render correctly', () => {

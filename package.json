@@ -35,7 +35,7 @@
     "biome:check": "npx biome check --write .",
     "biome:apply": "npx biome check --apply --write .",
     "biome:unsafe": "npx biome check --unsafe --write .",
-    "compileExt": "tsc && copyfiles src/resources/**/* out"
+    "compileExt": "tsc && copyfiles src/resources/** out --up 1"
   },
   "devDependencies": {
     "@biomejs/biome": "^1.9.4",

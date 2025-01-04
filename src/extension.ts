@@ -42,8 +42,15 @@ export function activate(context: vscode.ExtensionContext) {
         return;
       }
 
+      const workspaceRoot = vscode.workspace.workspaceFolders[0].uri.fsPath;
+      try {
+        await checkAndUpdatePackageJson(workspaceRoot);
+      } catch (error) {
+        vscode.window.showErrorMessage(`Failed to check/update package.json: ${error}`);
+        return;
+      }
+
       const folderPath = uri.fsPath;
-      workspaceRoot = vscode.workspace.workspaceFolders[0].uri.fsPath;
       const relativePath = path.relative(workspaceRoot, folderPath);
 
       console.log("Selected folder path:", folderPath);
@@ -64,7 +71,7 @@ export function activate(context: vscode.ExtensionContext) {
       }
 
       try {
-        await generateComponents(data, folderPath);
+        await generateComponents(data, folderPath, workspaceRoot);
         vscode.window.showInformationMessage(
           `Components successfully created in "${relativePath}"!`,
         );
@@ -88,6 +95,45 @@ export function deactivate() {
   }
 }
 
+async function checkAndUpdatePackageJson(workspaceRoot: string): Promise<void> {
+  const packageJsonPath = path.join(workspaceRoot, "package.json");
+
+  if (!fs.existsSync(packageJsonPath)) {
+    const createPackageJson = await vscode.window.showInformationMessage(
+      "package.json not found. Do you want to create it with 'type': 'module'?",
+      "Yes",
+      "No",
+    );
+
+    if (createPackageJson === "Yes") {
+      const packageJsonContent = JSON.stringify({ type: "module" }, null, 2);
+      await writeFile(packageJsonPath, packageJsonContent, "utf8");
+      vscode.window.showInformationMessage("package.json created with 'type': 'module'.");
+    } else {
+      throw new Error("package.json is required to use ES modules.");
+    }
+  } else {
+    const packageJsonContent = await readFile(packageJsonPath, "utf8");
+    const packageJson = JSON.parse(packageJsonContent);
+
+    if (!packageJson.type || packageJson.type !== "module") {
+      const updatePackageJson = await vscode.window.showInformationMessage(
+        "package.json does not have 'type': 'module'. Do you want to add it?",
+        "Yes",
+        "No",
+      );
+
+      if (updatePackageJson === "Yes") {
+        packageJson.type = "module";
+        await writeFile(packageJsonPath, JSON.stringify(packageJson, null, 2), "utf8");
+        vscode.window.showInformationMessage("package.json updated with 'type': 'module'.");
+      } else {
+        throw new Error("ES modules require 'type': 'module' in package.json.");
+      }
+    }
+  }
+}
+
 async function checkAndCopyPlopFiles(extensionPath: string, workspaceRoot: string): Promise<void> {
   const plopFilePath = path.join(workspaceRoot, "plopfile.js");
   const plopGeneratorsDir = path.join(workspaceRoot, "plop_generators");
@@ -97,6 +143,8 @@ async function checkAndCopyPlopFiles(extensionPath: string, workspaceRoot: strin
   const extensionPlopFile = path.join(extensionResourcesDir, "plopfile.js");
   const extensionGeneratorsDir = path.join(extensionResourcesDir, "plop_generators");
   const extensionTemplatesDir = path.join(extensionResourcesDir, "templates");
+
+  console.log("Checking and setting up Plop files...");
 
   await checkAndSetupBiome(workspaceRoot, extensionPath);
 
@@ -117,9 +165,36 @@ async function checkAndCopyPlopFiles(extensionPath: string, workspaceRoot: strin
 
   await checkAndUpdatePlopFile(extensionPlopFile, plopFilePath);
 
-  await checkAndUpdateComponentGenerator(extensionGeneratorsDir, plopGeneratorsDir);
+  if (!fs.existsSync(plopGeneratorsDir)) {
+    console.log("plop_generators folder not found. Prompting user to create it...");
+    const createGeneratorsDir = await vscode.window.showInformationMessage(
+      "plop_generators folder not found. Do you want to create it and componentGenerator.js in it?",
+      "Yes",
+      "No",
+    );
+
+    if (createGeneratorsDir === "Yes") {
+      await mkdir(plopGeneratorsDir);
+      console.log("plop_generators folder created successfully.");
+
+      const componentGeneratorPath = path.join(plopGeneratorsDir, "componentGenerator.js");
+      const extensionComponentGeneratorPath = path.join(extensionGeneratorsDir, "componentGenerator.js");
+
+      if (!fs.existsSync(extensionComponentGeneratorPath)) {
+        throw new Error(`componentGenerator.js not found in extension resources: ${extensionComponentGeneratorPath}`);
+      }
+
+      await copyFile(extensionComponentGeneratorPath, componentGeneratorPath);
+      console.log("componentGenerator.js created successfully.");
+    } else {
+      throw new Error("plop_generators folder is required to generate components.");
+    }
+  } else {
+    console.log("plop_generators folder already exists.");
+  }
 
   if (!fs.existsSync(templatesDir)) {
+    console.log("templates folder not found. Prompting user to create it...");
     const createTemplatesDir = await vscode.window.showInformationMessage(
       "templates folder not found. Do you want to create it?",
       "Yes",
@@ -128,9 +203,7 @@ async function checkAndCopyPlopFiles(extensionPath: string, workspaceRoot: strin
 
     if (createTemplatesDir === "Yes") {
       if (!fs.existsSync(extensionTemplatesDir)) {
-        throw new Error(
-          `templates folder not found in extension resources: ${extensionTemplatesDir}`,
-        );
+        throw new Error(`templates folder not found in extension resources: ${extensionTemplatesDir}`);
       }
 
       await mkdir(templatesDir);
@@ -142,11 +215,12 @@ async function checkAndCopyPlopFiles(extensionPath: string, workspaceRoot: strin
         await copyFile(sourceFile, destFile);
       }
 
-      vscode.window.showInformationMessage("templates folder and files created successfully.");
+      console.log("templates folder and files created successfully.");
     } else {
       throw new Error("templates folder is required to generate components.");
     }
   } else {
+    console.log("templates folder already exists.");
     await checkMissingAndModifiedTemplates(extensionTemplatesDir, templatesDir);
   }
 }
@@ -443,15 +517,30 @@ async function promptUserForComponentData(
       if (!value || value.trim().length === 0) {
         return "Please enter at least one component name.";
       }
-      const names = value.split(" ");
-      for (const name of names) {
-        if (!/^[a-zA-Z0-9_]*$/.test(name)) {
-          return "Component names can only contain English letters, numbers, and underscores.";
+
+      const words = value.split(" ");
+      for (const word of words) {
+        if (!/^[A-Z]/.test(word)) {
+          return `Each component name must start with an uppercase English letter. Invalid name: "${word}"`;
         }
       }
+
+      const names = value.split(" ");
+      const uniqueNames = new Set();
+      for (const name of names) {
+        if (!/^[A-Z][a-zA-Z0-9_]*$/.test(name)) {
+          return "Component names must start with an uppercase English letter and can only contain English letters, numbers, and underscores.";
+        }
+        if (uniqueNames.has(name)) {
+          return "Component names must be unique.";
+        }
+        uniqueNames.add(name);
+      }
+
       return null;
     },
   });
+
   if (namesInput === undefined) {
     return null;
   }
@@ -537,10 +626,10 @@ async function promptForSelection(
   });
   return selection;
 }
-
 async function generateComponents(
   componentsData: ComponentData[],
   folderPath: string,
+  workspaceRoot: string
 ): Promise<void> {
   const clearCommand = os.platform() === "win32" ? "cls" : "clear";
 
@@ -551,12 +640,24 @@ async function generateComponents(
   const isBiome = await isBiomePackageInstalled(workspaceRoot);
 
   for (const data of componentsData) {
-    const componentPath = path.join(folderPath, data.name);
+    const componentPath = path.resolve(folderPath, data.name); // Абсолютный путь к папке компонента
+
+    // Проверяем, существует ли компонент
     if (fs.existsSync(componentPath)) {
-      vscode.window.showErrorMessage(
-        `A component with the name "${data.name}" already exists in "${path.relative(workspaceRoot, folderPath)}".`,
+      const replaceComponent = await vscode.window.showInformationMessage(
+        `A component with the name "${data.name}" already exists. Do you want to replace it?`,
+        "Yes",
+        "No"
       );
-      continue;
+
+      if (replaceComponent !== "Yes") {
+        vscode.window.showInformationMessage(`Skipping component "${data.name}".`);
+        continue; // Пропускаем создание компонента, если пользователь не хочет заменять
+      }
+
+      // Удаляем существующий компонент, если пользователь согласился на замену
+      fs.rmSync(componentPath, { recursive: true, force: true });
+      console.log(`Removed existing component directory: ${componentPath}`);
     }
 
     const dataString = JSON.stringify(data);
@@ -564,7 +665,16 @@ async function generateComponents(
     terminal.sendText(`$env:PLOP_DATA='${dataString}'; npx plop component`);
 
     if (isBiome) {
-      terminal.sendText(`npx biome format --write ${path.join(folderPath, data.name)}`);
+      // Ждем завершения создания компонента
+      await new Promise((resolve) => setTimeout(resolve, 2000)); // Задержка 2 секунды
+
+      if (fs.existsSync(componentPath)) {
+        console.log("Component directory created:", componentPath);
+
+        terminal.sendText(`npx biome format --write "${componentPath}"`);
+      } else {
+        vscode.window.showErrorMessage(`Failed to find component directory: ${componentPath}.`);
+      }
     }
   }
 
