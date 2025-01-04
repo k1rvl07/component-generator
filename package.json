@@ -7,18 +7,11 @@
   "engines": {
     "vscode": "^1.96.0"
   },
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/k1rvl07/component-generator?tab=readme-ov-file"
-  },
   "main": "./out/extension.js",
   "activationEvents": [
     "onCommand:extension.createComponent"
   ],
   "contributes": {
-    "configuration": {
-      "title": "Component Generator"
-    },
     "commands": [
       {
         "command": "extension.createComponent",
@@ -40,14 +33,15 @@
     "compile": "echo No compilation needed for JS",
     "watch": "echo No watch needed for JS",
     "pretest": "npm run compile",
-    "test": "echo No tests yet",
-    "biome:check": "npx biome check --write .",
-    "biome:apply": "npx biome check --apply --write .",
-    "biome:unsafe": "npx biome check --unsafe --write ."
+    "test": "echo No tests yet"
   },
   "devDependencies": {
-    "@biomejs/biome": "^1.9.4",
     "@types/node": "^22.10.5",
     "@types/vscode": "^1.96.0"
-  }
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/your-username/your-repo.git"
+  },
+  "license": "MIT"
 }
