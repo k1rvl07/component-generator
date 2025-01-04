@@ -19,4 +19,4 @@ You can install this extension from the [Visual Studio Code Marketplace](https:/
 
 ## Contributing
 
-Contributions are welcome! Please open an issue or submit a pull request on [GitHub](https://github.com/your-username/your-repo).
+Contributions are welcome! Please open an issue or submit a pull request on [GitHub](https://github.com/k1rvl07/component-generator).
