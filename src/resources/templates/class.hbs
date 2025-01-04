@@ -1,0 +1,19 @@
+import React from 'react';
+{{#if style}}
+import styles from './{{name}}.module.{{style}}';
+{{/if}}
+
+export class {{name}} extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = {};
+  }
+
+  render() {
+    return (
+      <div>
+        {{name}} Component
+      </div>
+    );
+  }
+}

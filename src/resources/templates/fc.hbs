@@ -1,0 +1,12 @@
+import React from 'react';
+{{#if style}}
+import styles from './{{name}}.module.{{style}}';
+{{/if}}
+
+export const {{name}} = () => {
+  return (
+    <div>
+      {{name}} Component
+    </div>
+  );
+};

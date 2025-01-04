@@ -1,0 +1,49 @@
+{
+  "name": "component-generator",
+  "displayName": "Component Generator",
+  "description": "A VS Code extension to generate React components using Plop.",
+  "version": "1.0.0",
+  "publisher": "k1rvl_",
+  "engines": {
+    "vscode": "^1.96.0"
+  },
+  "main": "./out/extension.js",
+  "activationEvents": [
+    "onCommand:extension.createComponent"
+  ],
+  "contributes": {
+    "configuration": {
+      "title": "Component Generator"
+    },
+    "commands": [
+      {
+        "command": "extension.createComponent",
+        "title": "Create React Component"
+      }
+    ],
+    "menus": {
+      "explorer/context": [
+        {
+          "command": "extension.createComponent",
+          "group": "navigation",
+          "when": "explorerResourceIsFolder"
+        }
+      ]
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "echo No compilation needed for JS",
+    "watch": "echo No watch needed for JS",
+    "pretest": "npm run compile",
+    "test": "echo No tests yet",
+    "biome:check": "npx biome check --write .",
+    "biome:apply": "npx biome check --apply --write .",
+    "biome:unsafe": "npx biome check --unsafe --write ."
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^1.9.4",
+    "@types/node": "^22.10.5",
+    "@types/vscode": "^1.96.0"
+  }
+}

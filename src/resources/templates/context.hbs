@@ -1,0 +1,12 @@
+import React from 'react';
+
+export const {{name}}Context = React.createContext();
+
+export const {{name}}Provider = ({ children }) => {
+    const value = {};
+    return (
+        <{{name}}Context.Provider value={value}>
+   {children}
+        </{{name}}Context.Provider>
+    );
+};
