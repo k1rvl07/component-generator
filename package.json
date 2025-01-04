@@ -7,6 +7,10 @@
   "engines": {
     "vscode": "^1.96.0"
   },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/k1rvl07/component-generator?tab=readme-ov-file"
+  },
   "main": "./out/extension.js",
   "activationEvents": [
     "onCommand:extension.createComponent"
