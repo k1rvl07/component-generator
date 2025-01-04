@@ -11,7 +11,6 @@ const readdir = util.promisify(fs.readdir);
 const readFile = util.promisify(fs.readFile);
 
 let terminal: vscode.Terminal;
-let workspaceRoot: string;
 
 interface ComponentData {
   directory: string;
@@ -43,44 +42,29 @@ export function activate(context: vscode.ExtensionContext) {
       }
 
       const workspaceRoot = vscode.workspace.workspaceFolders[0].uri.fsPath;
-      try {
-        await checkAndUpdatePackageJson(workspaceRoot);
-      } catch (error) {
-        vscode.window.showErrorMessage(`Failed to check/update package.json: ${error}`);
-        return;
-      }
-
       const folderPath = uri.fsPath;
       const relativePath = path.relative(workspaceRoot, folderPath);
 
-      console.log("Selected folder path:", folderPath);
-      console.log("Workspace root:", workspaceRoot);
-      console.log("Relative path:", relativePath);
-
       try {
+        await checkAndUpdatePackageJson(workspaceRoot);
+
         await checkAndCopyPlopFiles(context.extensionPath, workspaceRoot);
-      } catch (error) {
-        vscode.window.showErrorMessage(`Failed to setup Plop: ${error}`);
-        return;
-      }
+        await checkAndSetupBiome(workspaceRoot, context.extensionPath);
 
-      const data = await promptUserForComponentData(folderPath, relativePath);
-      if (!data) {
-        vscode.window.showInformationMessage("Component creation canceled.");
-        return;
-      }
+        const componentData = await promptUserForComponentData(folderPath, relativePath);
+        if (!componentData) {
+          vscode.window.showInformationMessage("Component creation canceled.");
+          return;
+        }
 
-      try {
-        await generateComponents(data, folderPath, workspaceRoot);
+        await generateComponents(componentData, folderPath, workspaceRoot);
         vscode.window.showInformationMessage(
           `Components successfully created in "${relativePath}"!`,
         );
       } catch (error) {
-        if (error instanceof Error) {
-          vscode.window.showErrorMessage(`Failed to generate components: ${error.message}`);
-        } else {
-          vscode.window.showErrorMessage(`Failed to generate components: ${String(error)}`);
-        }
+        vscode.window.showErrorMessage(
+          `Failed to generate components: ${error instanceof Error ? error.message : String(error)}`,
+        );
       }
     },
   );
@@ -319,7 +303,6 @@ async function installPlopDependencies(_workspaceRoot: string): Promise<void> {
 
   vscode.window.showInformationMessage("Installing Plop... Please wait.");
 }
-
 async function checkAndUpdatePlopFile(
   extensionPlopFile: string,
   plopFilePath: string,
@@ -363,68 +346,6 @@ async function checkAndUpdatePlopFile(
       vscode.window.showInformationMessage(
         "plopfile.js has been updated with missing imports and usage.",
       );
-    }
-  }
-}
-
-async function checkAndUpdateComponentGenerator(
-  extensionGeneratorsDir: string,
-  plopGeneratorsDir: string,
-): Promise<void> {
-  const componentGeneratorPath = path.join(plopGeneratorsDir, "componentGenerator.js");
-  const extensionComponentGeneratorPath = path.join(
-    extensionGeneratorsDir,
-    "componentGenerator.js",
-  );
-
-  if (!fs.existsSync(plopGeneratorsDir)) {
-    const createGeneratorsDir = await vscode.window.showInformationMessage(
-      "plop_generators folder not found. Do you want to create it and componentGenerator.js in it?",
-      "Yes",
-      "No",
-    );
-
-    if (createGeneratorsDir === "Yes") {
-      await mkdir(plopGeneratorsDir);
-      vscode.window.showInformationMessage("plop_generators folder created successfully.");
-
-      await copyFile(extensionComponentGeneratorPath, componentGeneratorPath);
-      vscode.window.showInformationMessage("componentGenerator.js created successfully.");
-    } else {
-      throw new Error("plop_generators folder is required to generate components.");
-    }
-  } else {
-    if (!fs.existsSync(componentGeneratorPath)) {
-      const createComponentGenerator = await vscode.window.showInformationMessage(
-        "componentGenerator.js not found. Do you want to create it?",
-        "Yes",
-        "No",
-      );
-
-      if (createComponentGenerator === "Yes") {
-        await copyFile(extensionComponentGeneratorPath, componentGeneratorPath);
-        vscode.window.showInformationMessage("componentGenerator.js created successfully.");
-      } else {
-        throw new Error("componentGenerator.js is required to generate components.");
-      }
-    } else {
-      const userContent = await readFile(componentGeneratorPath, "utf8");
-      const defaultContent = await readFile(extensionComponentGeneratorPath, "utf8");
-
-      if (userContent !== defaultContent) {
-        const restoreGenerator = await vscode.window.showInformationMessage(
-          "componentGenerator.js has been modified. Do you want to restore it to the default version?",
-          "Yes",
-          "No",
-        );
-
-        if (restoreGenerator === "Yes") {
-          await copyFile(extensionComponentGeneratorPath, componentGeneratorPath);
-          vscode.window.showInformationMessage(
-            "componentGenerator.js has been restored to the default version.",
-          );
-        }
-      }
     }
   }
 }
@@ -626,10 +547,11 @@ async function promptForSelection(
   });
   return selection;
 }
+
 async function generateComponents(
   componentsData: ComponentData[],
   folderPath: string,
-  workspaceRoot: string
+  workspaceRoot: string,
 ): Promise<void> {
   const clearCommand = os.platform() === "win32" ? "cls" : "clear";
 
@@ -640,24 +562,21 @@ async function generateComponents(
   const isBiome = await isBiomePackageInstalled(workspaceRoot);
 
   for (const data of componentsData) {
-    const componentPath = path.resolve(folderPath, data.name); // Абсолютный путь к папке компонента
+    const componentPath = path.resolve(folderPath, data.name);
 
-    // Проверяем, существует ли компонент
     if (fs.existsSync(componentPath)) {
       const replaceComponent = await vscode.window.showInformationMessage(
         `A component with the name "${data.name}" already exists. Do you want to replace it?`,
         "Yes",
-        "No"
+        "No",
       );
 
       if (replaceComponent !== "Yes") {
         vscode.window.showInformationMessage(`Skipping component "${data.name}".`);
-        continue; // Пропускаем создание компонента, если пользователь не хочет заменять
+        continue;
       }
 
-      // Удаляем существующий компонент, если пользователь согласился на замену
       fs.rmSync(componentPath, { recursive: true, force: true });
-      console.log(`Removed existing component directory: ${componentPath}`);
     }
 
     const dataString = JSON.stringify(data);
@@ -665,21 +584,12 @@ async function generateComponents(
     terminal.sendText(`$env:PLOP_DATA='${dataString}'; npx plop component`);
 
     if (isBiome) {
-      // Ждем завершения создания компонента
-      await new Promise((resolve) => setTimeout(resolve, 2000)); // Задержка 2 секунды
-
-      if (fs.existsSync(componentPath)) {
-        console.log("Component directory created:", componentPath);
-
-        terminal.sendText(`npx biome format --write "${componentPath}"`);
-      } else {
-        vscode.window.showErrorMessage(`Failed to find component directory: ${componentPath}.`);
-      }
+      await new Promise((resolve) => setTimeout(resolve, 2000));
+      terminal.sendText(`npx biome format --write "${componentPath}"`);
     }
   }
 
   terminal.show();
-
   vscode.window.showInformationMessage(
     `Components successfully created in "${path.relative(workspaceRoot, folderPath)}"!`,
   );
