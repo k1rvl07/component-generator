@@ -534,16 +534,19 @@ async function promptForSelection(
 }
 
 async function isBiomeInstalled(workspaceRoot: string): Promise<boolean> {
-	const packageJsonPath = path.join(workspaceRoot, "package.json");
+    const biomePath = path.join(workspaceRoot, "node_modules", ".bin", "biome");
+    if (fs.existsSync(biomePath)) {
+        return true;
+    }
 
-	if (!fs.existsSync(packageJsonPath)) {
-		return false;
-	}
-
-	const packageJsonContent = await readFile(packageJsonPath, "utf8");
-	const packageJson = JSON.parse(packageJsonContent);
-
-	return packageJson.dependencies?.biome || packageJson.devDependencies?.biome;
+    try {
+        const { execSync } = require("child_process");
+        const command = os.platform() === "win32" ? "where biome" : "which biome";
+        execSync(command);
+        return true;
+    } catch (error) {
+        return false;
+    }
 }
 
 async function installBiome(workspaceRoot: string): Promise<void> {

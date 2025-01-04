@@ -1,47 +1,55 @@
 {
-  "name": "component-generator",
-  "displayName": "Component Generator",
-  "description": "A VS Code extension to generate React components using Plop.",
-  "version": "1.0.0",
-  "publisher": "k1rvl_",
-  "engines": {
-    "vscode": "^1.96.0"
-  },
-  "main": "./out/extension.js",
-  "activationEvents": [
-    "onCommand:extension.createComponent"
-  ],
-  "contributes": {
-    "commands": [
-      {
-        "command": "extension.createComponent",
-        "title": "Create React Component"
-      }
-    ],
-    "menus": {
-      "explorer/context": [
-        {
-          "command": "extension.createComponent",
-          "group": "navigation",
-          "when": "explorerResourceIsFolder"
-        }
-      ]
-    }
-  },
-  "scripts": {
-    "vscode:prepublish": "npm run compile",
-    "compile": "echo No compilation needed for JS",
-    "watch": "echo No watch needed for JS",
-    "pretest": "npm run compile",
-    "test": "echo No tests yet"
-  },
-  "devDependencies": {
-    "@types/node": "^22.10.5",
-    "@types/vscode": "^1.96.0"
-  },
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/your-username/your-repo.git"
-  },
-  "license": "MIT"
+	"name": "component-generator",
+	"displayName": "Component Generator",
+	"description": "A VS Code extension to generate React components using Plop.",
+	"version": "1.0.0",
+	"publisher": "k1rvl07",
+	"engines": {
+		"vscode": "^1.96.0"
+	},
+	"main": "./out/extension.js",
+	"activationEvents": [
+		"onCommand:extension.createComponent"
+	],
+	"contributes": {
+		"commands": [
+			{
+				"command": "extension.createComponent",
+				"title": "Create React Component"
+			}
+		],
+		"menus": {
+			"explorer/context": [
+				{
+					"command": "extension.createComponent",
+					"group": "navigation",
+					"when": "explorerResourceIsFolder"
+				}
+			]
+		}
+	},
+	"scripts": {
+		"vscode:prepublish": "npm run compile",
+		"compile": "echo No compilation needed for JS",
+		"watch": "echo No watch needed for JS",
+		"pretest": "npm run compile",
+		"test": "echo No tests yet",
+		"biome:check": "npx biome check --write .",
+		"biome:apply": "npx biome check --apply --write .",
+		"biome:unsafe": "npx biome check --unsafe --write .",
+		"compileExt": "tsc && copyfiles src/resources/**/* out"
+	},
+	"devDependencies": {
+		"@types/node": "^22.10.5",
+		"@types/vscode": "^1.96.0",
+		"copyfiles": "^2.4.1"
+	},
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/your-username/your-repo.git"
+	},
+	"license": "MIT",
+	"files": [
+		"out"
+	]
 }

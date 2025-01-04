@@ -350,14 +350,19 @@ function promptForSelection(options, placeHolder) {
 }
 function isBiomeInstalled(workspaceRoot) {
     return __awaiter(this, void 0, void 0, function* () {
-        var _a, _b;
-        const packageJsonPath = path.join(workspaceRoot, "package.json");
-        if (!fs.existsSync(packageJsonPath)) {
+        const biomePath = path.join(workspaceRoot, "node_modules", ".bin", "biome");
+        if (fs.existsSync(biomePath)) {
+            return true;
+        }
+        try {
+            const { execSync } = require("child_process");
+            const command = os.platform() === "win32" ? "where biome" : "which biome";
+            execSync(command);
+            return true;
+        }
+        catch (error) {
             return false;
         }
-        const packageJsonContent = yield readFile(packageJsonPath, "utf8");
-        const packageJson = JSON.parse(packageJsonContent);
-        return ((_a = packageJson.dependencies) === null || _a === void 0 ? void 0 : _a.biome) || ((_b = packageJson.devDependencies) === null || _b === void 0 ? void 0 : _b.biome);
     });
 }
 function installBiome(workspaceRoot) {
