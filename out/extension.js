@@ -78,10 +78,12 @@ function checkAndCopyPlopFiles(extensionPath, workspaceRoot) {
         const plopFilePath = path.join(workspaceRoot, "plopfile.js");
         const plopGeneratorsDir = path.join(workspaceRoot, "plop_generators");
         const templatesDir = path.join(workspaceRoot, "templates");
-        const extensionResourcesDir = path.join(extensionPath, "src", "resources");
+        const extensionResourcesDir = path.join(extensionPath, "out", "resources");
         const extensionPlopFile = path.join(extensionResourcesDir, "plopfile.js");
         const extensionGeneratorsDir = path.join(extensionResourcesDir, "plop_generators");
         const extensionTemplatesDir = path.join(extensionResourcesDir, "templates");
+        // Проверка и настройка Biome
+        yield checkAndSetupBiome(workspaceRoot, extensionPath);
         const isPlopInstalled = yield checkPlopInstalled(workspaceRoot);
         if (!isPlopInstalled) {
             const installPlop = yield vscode.window.showInformationMessage("Plop is not installed. Do you want to install it?", "Yes", "No");
@@ -90,16 +92,6 @@ function checkAndCopyPlopFiles(extensionPath, workspaceRoot) {
             }
             else {
                 throw new Error("Plop is required to generate components.");
-            }
-        }
-        const isBiome = yield isBiomeInstalled(workspaceRoot);
-        if (!isBiome) {
-            const installBiomeOption = yield vscode.window.showInformationMessage("Biome is not installed. Do you want to install it?", "Yes", "No");
-            if (installBiomeOption === "Yes") {
-                yield installBiome(workspaceRoot);
-            }
-            else {
-                vscode.window.showWarningMessage("Biome is not installed. Code formatting will be skipped.");
             }
         }
         yield checkAndUpdatePlopFile(extensionPlopFile, plopFilePath);
@@ -128,6 +120,66 @@ function checkAndCopyPlopFiles(extensionPath, workspaceRoot) {
         }
     });
 }
+function checkAndSetupBiome(workspaceRoot, extensionPath) {
+    return __awaiter(this, void 0, void 0, function* () {
+        const biomeJsonPath = path.join(workspaceRoot, "biome.json");
+        const extensionBiomeJsonPath = path.join(extensionPath, "out", "resources", "biome.json");
+        const isBiomeInstalled = yield isBiomePackageInstalled(workspaceRoot);
+        const isBiomeJsonExists = fs.existsSync(biomeJsonPath);
+        // Если Biome не установлен и файл отсутствует
+        if (!isBiomeInstalled && !isBiomeJsonExists) {
+            const installBiomeAndAddConfig = yield vscode.window.showInformationMessage("Biome is not installed and biome.json is missing. Do you want to install Biome and add the configuration file?", "Yes", "No");
+            if (installBiomeAndAddConfig === "Yes") {
+                yield installBiome(workspaceRoot);
+                yield copyFile(extensionBiomeJsonPath, biomeJsonPath);
+                vscode.window.showInformationMessage("Biome installed and biome.json added successfully.");
+            }
+        }
+        // Если Biome установлен, но файл отсутствует
+        else if (isBiomeInstalled && !isBiomeJsonExists) {
+            const addBiomeConfig = yield vscode.window.showInformationMessage("biome.json is missing. Do you want to add the configuration file?", "Yes", "No");
+            if (addBiomeConfig === "Yes") {
+                yield copyFile(extensionBiomeJsonPath, biomeJsonPath);
+                vscode.window.showInformationMessage("biome.json added successfully.");
+            }
+        }
+        // Если Biome не установлен, но файл существует
+        else if (!isBiomeInstalled && isBiomeJsonExists) {
+            const installBiomeOption = yield vscode.window.showInformationMessage("Biome is not installed. Do you want to install it?", "Yes", "No");
+            if (installBiomeOption === "Yes") {
+                yield installBiome(workspaceRoot);
+                vscode.window.showInformationMessage("Biome installed successfully.");
+            }
+        }
+    });
+}
+function isBiomePackageInstalled(workspaceRoot) {
+    return __awaiter(this, void 0, void 0, function* () {
+        const biomePath = path.join(workspaceRoot, "node_modules", ".bin", "biome");
+        if (fs.existsSync(biomePath)) {
+            return true;
+        }
+        try {
+            const { execSync } = require("node:child_process");
+            const command = os.platform() === "win32" ? "where biome" : "which biome";
+            execSync(command);
+            return true;
+        }
+        catch (_error) {
+            return false;
+        }
+    });
+}
+function installBiome(_workspaceRoot) {
+    return __awaiter(this, void 0, void 0, function* () {
+        if (!terminal || terminal.exitStatus !== undefined) {
+            terminal = vscode.window.createTerminal("Component Generator");
+        }
+        terminal.sendText("npm install --save-dev @biomejs/biome");
+        terminal.show();
+        vscode.window.showInformationMessage("Installing Biome... Please wait.");
+    });
+}
 function checkPlopInstalled(workspaceRoot) {
     return __awaiter(this, void 0, void 0, function* () {
         var _a, _b;
@@ -140,7 +192,7 @@ function checkPlopInstalled(workspaceRoot) {
         return ((_a = packageJson.dependencies) === null || _a === void 0 ? void 0 : _a.plop) || ((_b = packageJson.devDependencies) === null || _b === void 0 ? void 0 : _b.plop);
     });
 }
-function installPlopDependencies(workspaceRoot) {
+function installPlopDependencies(_workspaceRoot) {
     return __awaiter(this, void 0, void 0, function* () {
         if (!terminal || terminal.exitStatus !== undefined) {
             terminal = vscode.window.createTerminal("Component Generator");
@@ -224,7 +276,7 @@ function checkAndUpdateComponentGenerator(extensionGeneratorsDir, plopGenerators
         }
     });
 }
-function addMissingImportsAndUsage(userContent, defaultContent) {
+function addMissingImportsAndUsage(userContent, _defaultContent) {
     const importRegex = /import\s+componentGenerator\s+from\s+["']\.\/plop_generators\/componentGenerator\.js["'];/;
     const usageRegex = /componentGenerator\(\s*plop\s*\)\s*;?/;
     let updatedContent = userContent;
@@ -275,7 +327,7 @@ function checkMissingAndModifiedTemplates(extensionTemplatesDir, templatesDir) {
         }
     });
 }
-function promptUserForComponentData(folderPath, relativePath) {
+function promptUserForComponentData(_folderPath, relativePath) {
     return __awaiter(this, void 0, void 0, function* () {
         const namesInput = yield vscode.window.showInputBox({
             prompt: "Enter component names (separated by spaces):",
@@ -293,35 +345,42 @@ function promptUserForComponentData(folderPath, relativePath) {
                 return null;
             },
         });
-        if (namesInput === undefined)
+        if (namesInput === undefined) {
             return null;
-        const uniqueNames = [
-            ...new Set(namesInput.split(" ").filter((name) => name.trim() !== "")),
-        ];
+        }
+        const uniqueNames = [...new Set(namesInput.split(" ").filter((name) => name.trim() !== ""))];
         const componentType = yield promptForSelection(["Functional Component", "Class Component"], "Choose component type:");
-        if (componentType === undefined)
+        if (componentType === undefined) {
             return null;
+        }
         const language = yield promptForSelection(["JavaScript", "TypeScript"], "Choose language:");
-        if (language === undefined)
+        if (language === undefined) {
             return null;
+        }
         const style = yield promptForSelection(["No", "CSS", "SCSS", "Styled Components"], "Choose styling method:");
-        if (style === undefined)
+        if (style === undefined) {
             return null;
+        }
         const stories = yield promptForSelection(["No", "Yes"], "Do you want to add a Storybook story?");
-        if (stories === undefined)
+        if (stories === undefined) {
             return null;
+        }
         const testFramework = yield promptForSelection(["No", "Jest", "React Testing Library", "Cypress"], "Choose test framework:");
-        if (testFramework === undefined)
+        if (testFramework === undefined) {
             return null;
+        }
         const contextOption = yield promptForSelection(["No", "Yes"], "Do you want to add React Context?");
-        if (contextOption === undefined)
+        if (contextOption === undefined) {
             return null;
+        }
         const hooks = yield promptForSelection(["No", "Yes"], "Do you want to add custom hooks?");
-        if (hooks === undefined)
+        if (hooks === undefined) {
             return null;
+        }
         const folderStructure = yield promptForSelection(["Flat", "Grouped"], "Choose folder structure:");
-        if (folderStructure === undefined)
+        if (folderStructure === undefined) {
             return null;
+        }
         return uniqueNames.map((name) => ({
             directory: relativePath,
             name,
@@ -348,40 +407,13 @@ function promptForSelection(options, placeHolder) {
         return selection;
     });
 }
-function isBiomeInstalled(workspaceRoot) {
-    return __awaiter(this, void 0, void 0, function* () {
-        const biomePath = path.join(workspaceRoot, "node_modules", ".bin", "biome");
-        if (fs.existsSync(biomePath)) {
-            return true;
-        }
-        try {
-            const { execSync } = require("child_process");
-            const command = os.platform() === "win32" ? "where biome" : "which biome";
-            execSync(command);
-            return true;
-        }
-        catch (error) {
-            return false;
-        }
-    });
-}
-function installBiome(workspaceRoot) {
-    return __awaiter(this, void 0, void 0, function* () {
-        if (!terminal || terminal.exitStatus !== undefined) {
-            terminal = vscode.window.createTerminal("Component Generator");
-        }
-        terminal.sendText("npm install --save-dev @biomejs/biome");
-        terminal.show();
-        vscode.window.showInformationMessage("Installing Biome... Please wait.");
-    });
-}
 function generateComponents(componentsData, folderPath) {
     return __awaiter(this, void 0, void 0, function* () {
         const clearCommand = os.platform() === "win32" ? "cls" : "clear";
         if (!terminal || terminal.exitStatus !== undefined) {
             terminal = vscode.window.createTerminal("Component Generator");
         }
-        const isBiome = yield isBiomeInstalled(workspaceRoot);
+        const isBiome = yield isBiomePackageInstalled(workspaceRoot);
         for (const data of componentsData) {
             const componentPath = path.join(folderPath, data.name);
             if (fs.existsSync(componentPath)) {
