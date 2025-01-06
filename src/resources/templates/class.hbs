@@ -30,15 +30,23 @@ export class {{name}} extends React.Component {
 
   render() {
     return (
-      {{#if_eq style "Styled Components"}}
-      <Container>
-        {{name}} Component
-      </Container>
-      {{else}}
-      <div className={styles.container}>
-        {{name}} Component
-      </div>
-      {{/if_eq}}
+{{#if_eq style "Styled Components"}}
+    <Container>
+      {{name}} Component
+    </Container>
+{{else if_eq style "CSS"}}
+    <div className={styles.container}>
+      {{name}} Component
+    </div>
+{{else if_eq style "SCSS"}}
+    <div className={styles.container}>
+      {{name}} Component
+    </div>
+{{else}}
+    <div>
+      {{name}} Component
+    </div>
+{{/if_eq}}
     );
   }
 }

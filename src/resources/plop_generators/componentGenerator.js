@@ -5,17 +5,14 @@ import { fileURLToPath } from "node:url";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 export default function (plop) {
-  plop.setHelper('if_eq', function (a, b, opts) {
+  plop.setHelper("if_eq", function (a, b, opts) {
     if (a === b) {
       return opts.fn(this);
-    } else {
-      return opts.inverse(this);
     }
+    return opts.inverse(this);
   });
 
-  plop.setHelper('toLowerCase', function (str) {
-    return str.toLowerCase();
-  });
+  plop.setHelper("toLowerCase", (str) => str.toLowerCase());
 
   plop.setGenerator("component", {
     description: "Create a new React component",
@@ -24,8 +21,18 @@ export default function (plop) {
       const plopData = process.env.PLOP_DATA ? JSON.parse(process.env.PLOP_DATA) : {};
       const mergedData = { ...data, ...plopData };
 
-      const { directory, name, componentType, language, style, stories, test, context, hooks, folderStructure } =
-        mergedData;
+      const {
+        directory,
+        name,
+        componentType,
+        language,
+        style,
+        stories,
+        test,
+        context,
+        hooks,
+        folderStructure,
+      } = mergedData;
 
       if (!name || !directory) {
         throw new Error("Name and directory are required!");
@@ -62,7 +69,7 @@ export default function (plop) {
         testTemplate,
         contextTemplate,
         hooksTemplate,
-        styledTemplate
+        styledTemplate,
       ];
 
       for (const template of templates) {
@@ -76,7 +83,7 @@ export default function (plop) {
         style,
         language,
         folderStructure,
-        hooks
+        hooks,
       };
 
       const actions = [];

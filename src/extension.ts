@@ -162,10 +162,15 @@ async function checkAndCopyPlopFiles(extensionPath: string, workspaceRoot: strin
       console.log("plop_generators folder created successfully.");
 
       const componentGeneratorPath = path.join(plopGeneratorsDir, "componentGenerator.js");
-      const extensionComponentGeneratorPath = path.join(extensionGeneratorsDir, "componentGenerator.js");
+      const extensionComponentGeneratorPath = path.join(
+        extensionGeneratorsDir,
+        "componentGenerator.js",
+      );
 
       if (!fs.existsSync(extensionComponentGeneratorPath)) {
-        throw new Error(`componentGenerator.js not found in extension resources: ${extensionComponentGeneratorPath}`);
+        throw new Error(
+          `componentGenerator.js not found in extension resources: ${extensionComponentGeneratorPath}`,
+        );
       }
 
       await copyFile(extensionComponentGeneratorPath, componentGeneratorPath);
@@ -187,7 +192,9 @@ async function checkAndCopyPlopFiles(extensionPath: string, workspaceRoot: strin
 
     if (createTemplatesDir === "Yes") {
       if (!fs.existsSync(extensionTemplatesDir)) {
-        throw new Error(`templates folder not found in extension resources: ${extensionTemplatesDir}`);
+        throw new Error(
+          `templates folder not found in extension resources: ${extensionTemplatesDir}`,
+        );
       }
 
       await mkdir(templatesDir);

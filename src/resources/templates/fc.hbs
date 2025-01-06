@@ -21,14 +21,22 @@ export const {{name}} = () => {
   {{/if}}
 
   return (
-    {{#if_eq style "Styled Components"}}
+{{#if_eq style "Styled Components"}}
     <Container>
       {{name}} Component
     </Container>
-    {{else}}
+{{else if_eq style "CSS"}}
     <div className={styles.container}>
       {{name}} Component
     </div>
-    {{/if_eq}}
+{{else if_eq style "SCSS"}}
+    <div className={styles.container}>
+      {{name}} Component
+    </div>
+{{else}}
+    <div>
+      {{name}} Component
+    </div>
+{{/if_eq}}
   );
 };
